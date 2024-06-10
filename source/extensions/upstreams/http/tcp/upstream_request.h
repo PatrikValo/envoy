@@ -20,22 +20,50 @@ namespace Upstreams {
 namespace Http {
 namespace Tcp {
 
-class TcpConnPool : public Router::GenericConnPool, public Envoy::Tcp::ConnectionPool::Callbacks {
+class TcpConnPool : public Router::GenericConnPool, public Envoy::Tcp::ConnectionPool::Callbacks, public Logger::Loggable<Logger::Id::router> {
 public:
   TcpConnPool(Upstream::ThreadLocalCluster& thread_local_cluster,
               Upstream::ResourcePriority priority, Upstream::LoadBalancerContext* ctx) {
     conn_pool_data_ = thread_local_cluster.tcpConnPool(priority, ctx);
   }
   ~TcpConnPool() override {
-    ENVOY_BUG(upstream_handle_ == nullptr, "upstream_handle not null");
-    resetUpstreamHandleIfSet();
+    std::string upstream_handle_pointer = "nullptr";
+    std::string callbacks_pointer = "nullptr";
+
+    if (!!upstream_handle_) {
+      std::ostringstream oss;
+      oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(upstream_handle_);
+      upstream_handle_pointer = oss.str();
+    }
+
+    if (!!callbacks_) {
+      std::ostringstream oss;
+      oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(callbacks_);
+      callbacks_pointer = oss.str();
+    }
+
+    std::ostringstream oss;
+    oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(this);
+
+
+    ENVOY_LOG(info, "PVALO ~TcpConnPool: {}, upstream_handle_: {}, callbacks_: {}", oss.str(), upstream_handle_pointer, callbacks_pointer);
   }
   // Router::GenericConnPool
   void newStream(Router::GenericConnectionPoolCallbacks* callbacks) override {
+    std::ostringstream oss;
+    oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(this);
+    std::ostringstream os;
+    os << "0x" << std::hex << reinterpret_cast<uintptr_t>(callbacks);
+    ENVOY_LOG(info, "PVALO tcp TcpConnPool({})::newStream callbacks: {}", oss.str(), os.str());
     callbacks_ = callbacks;
     upstream_handle_ = conn_pool_data_.value().newConnection(*this);
   }
-  bool cancelAnyPendingStream() override { return resetUpstreamHandleIfSet(); }
+  bool cancelAnyPendingStream() override {
+    std::ostringstream oss;
+    oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(this);
+    ENVOY_LOG(info, "PVALO cancelAnyPendingStream {}", oss.str());
+    return resetUpstreamHandleIfSet();
+  }
   Upstream::HostDescriptionConstSharedPtr host() const override {
     return conn_pool_data_.value().host();
   }
@@ -45,6 +73,9 @@ public:
   void onPoolFailure(ConnectionPool::PoolFailureReason reason,
                      absl::string_view transport_failure_reason,
                      Upstream::HostDescriptionConstSharedPtr host) override {
+    std::ostringstream oss;
+    oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(this);
+    ENVOY_LOG(info, "PVALO tcp TcpConnPool({})::onPoolFailure({}, {})", oss.str(), int(reason), transport_failure_reason);
     upstream_handle_ = nullptr;
     callbacks_->onPoolFailure(reason, transport_failure_reason, host);
   }

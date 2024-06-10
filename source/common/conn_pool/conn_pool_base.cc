@@ -287,9 +287,11 @@ ConnectionPool::Cancellable* ConnPoolImplBase::newStreamImpl(AttachContext& cont
     return nullptr;
   }
 
+  logPendingStreams("before newPendingStream -");
   ConnectionPool::Cancellable* pending = newPendingStream(context, can_send_early_data);
-  ENVOY_LOG(debug, "trying to create new connection");
-  ENVOY_LOG(trace, fmt::format("{}", *this));
+  logPendingStreams("after newPendingStream -");
+  ENVOY_LOG(info, "trying to create new connection");
+  ENVOY_LOG(info, fmt::format("{}", *this));
 
   auto old_capacity = connecting_stream_capacity_;
   // This must come after newPendingStream() because this function uses the
@@ -323,7 +325,9 @@ void ConnPoolImplBase::scheduleOnUpstreamReady() {
 }
 
 void ConnPoolImplBase::onUpstreamReady() {
+  logPendingStreams("ConnPoolImplBase::onUpstreamReady - ");
   while (!pending_streams_.empty() && !ready_clients_.empty()) {
+    logPendingStreams("ConnPoolImplBase::onUpstreamReady iteration - ");
     ActiveClientPtr& client = ready_clients_.front();
     ENVOY_CONN_LOG(debug, "attaching to next stream", *client);
     // Pending streams are pushed onto the front, so pull from the back.
@@ -331,6 +335,7 @@ void ConnPoolImplBase::onUpstreamReady() {
     state_.decrPendingStreams(1);
     pending_streams_.pop_back();
   }
+  logPendingStreams("ConnPoolImplBase::onUpstreamReady after all iterations - ");
   if (!pending_streams_.empty()) {
     tryCreateNewConnections();
   }
@@ -405,7 +410,7 @@ void ConnPoolImplBase::drainClients(std::list<ActiveClientPtr>& clients) {
   while (!clients.empty()) {
     ASSERT(clients.front()->numActiveStreams() > 0u);
     ENVOY_LOG_EVENT(
-        debug, "draining_non_idle_client", "draining {} client {} for cluster {}",
+        info, "draining_non_idle_client", "draining {} client {} for cluster {}",
         (clients.front()->state() == ActiveClient::State::Ready ? "ready" : "early data"),
         clients.front()->id(), host_->cluster().name());
     transitionActiveClientState(*clients.front(), ActiveClient::State::Draining);
@@ -632,6 +637,9 @@ PendingStream::~PendingStream() {
 }
 
 void PendingStream::cancel(Envoy::ConnectionPool::CancelPolicy policy) {
+  std::ostringstream oss;
+  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(this);
+  ENVOY_LOG(info, "PVALO PendingStream::cancel {}", oss.str());
   parent_.onPendingStreamCancel(*this, policy);
 }
 
@@ -640,6 +648,7 @@ void ConnPoolImplBase::purgePendingStreams(
     absl::string_view failure_reason, ConnectionPool::PoolFailureReason reason) {
   // NOTE: We move the existing pending streams to a temporary list. This is done so that
   //       if retry logic submits a new stream to the pool, we don't fail it inline.
+  logPendingStreams("ConnPoolImplBase::purgePendingStreams before - ");
   state_.decrPendingStreams(pending_streams_.size());
   pending_streams_to_purge_ = std::move(pending_streams_);
   while (!pending_streams_to_purge_.empty()) {
@@ -648,6 +657,7 @@ void ConnPoolImplBase::purgePendingStreams(
     host_->cluster().trafficStats()->upstream_rq_pending_failure_eject_.inc();
     onPoolFailure(host_description, failure_reason, reason, stream->context());
   }
+  logPendingStreams("ConnPoolImplBase::purgePendingStreams after - ");
 }
 
 bool ConnPoolImplBase::connectingConnectionIsExcess(const ActiveClient& client) const {
@@ -666,15 +676,21 @@ bool ConnPoolImplBase::connectingConnectionIsExcess(const ActiveClient& client) 
 
 void ConnPoolImplBase::onPendingStreamCancel(PendingStream& stream,
                                              Envoy::ConnectionPool::CancelPolicy policy) {
-  ENVOY_LOG(debug, "cancelling pending stream");
+  ENVOY_LOG(info, "cancelling pending stream");
   if (!pending_streams_to_purge_.empty()) {
     // If pending_streams_to_purge_ is not empty, it means that we are called from
     // with-in a onPoolFailure callback invoked in purgePendingStreams (i.e. purgePendingStreams
     // is down in the call stack). Remove this stream from the list as it is cancelled,
     // and there is no need to call its onPoolFailure callback.
+    std::ostringstream oss;
+    oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&stream);
+    ENVOY_LOG(info, "PVALO stream.removeFromList(pending_streams_to_purge_) 658, stream: {}", oss.str());
     stream.removeFromList(pending_streams_to_purge_);
   } else {
     state_.decrPendingStreams(1);
+    std::ostringstream oss;
+    oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&stream);
+    ENVOY_LOG(info, "PVALO stream.removeFromList(pending_streams_) 691, stream: {}", oss.str());
     stream.removeFromList(pending_streams_);
   }
   if (policy == Envoy::ConnectionPool::CancelPolicy::CloseExcess) {
@@ -726,6 +742,7 @@ void ConnPoolImplBase::onUpstreamReadyForEarlyData(ActiveClient& client) {
   // Check pending streams backward for safe request.
   // Note that this is a O(n) search, but the expected size of pending_streams_ should be small. If
   // this becomes a problem, we could split pending_streams_ into 2 lists.
+  logPendingStreams("onUpstreamReadyForEarlyData before -");
   auto it = pending_streams_.end();
   if (it == pending_streams_.begin()) {
     return;
@@ -741,15 +758,20 @@ void ConnPoolImplBase::onUpstreamReadyForEarlyData(ActiveClient& client) {
     }
 
     if (stream.can_send_early_data_) {
-      ENVOY_CONN_LOG(debug, "creating stream for early data.", client);
+      ENVOY_CONN_LOG(info, "creating stream for early data.", client);
       attachStreamToClient(client, stream.context());
       state_.decrPendingStreams(1);
+      std::ostringstream oss;
+      oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&stream);
+      ENVOY_LOG(info, "PVALO stream.removeFromList(pending_streams_) 763, stream: {}", oss.str());
       stream.removeFromList(pending_streams_);
     }
     if (stop_iteration) {
+      logPendingStreams("onUpstreamReadyForEarlyData return -");
       return;
     }
   }
+  logPendingStreams("onUpstreamReadyForEarlyData after -");
 }
 
 namespace {

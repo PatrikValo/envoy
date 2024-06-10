@@ -1108,6 +1108,9 @@ void Filter::onResponseTimeout() {
   while (!upstream_requests_.empty()) {
     UpstreamRequestPtr upstream_request =
         upstream_requests_.back()->removeFromList(upstream_requests_);
+    std::ostringstream oss;
+    oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(upstream_request.get());
+    ENVOY_LOG(info, "PVALO Filer::removeFromList 1098, upstream_request: {}", oss.str());
 
     // We want to record the upstream timeouts and increase the stats counters in all the cases.
     // For example, we also want to record the stats in the case of BiDi streaming APIs where we
@@ -1220,6 +1223,9 @@ void Filter::onPerTryTimeoutCommon(UpstreamRequest& upstream_request, Stats::Cou
   chargeUpstreamAbort(timeout_response_code_, false, upstream_request);
 
   // Remove this upstream request from the list now that we're done with it.
+  std::ostringstream oss;
+  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&upstream_request);
+  ENVOY_LOG(info, "PVALO Filer::removeFromList 1211, upstream_request: {}", oss.str());
   upstream_request.removeFromList(upstream_requests_);
   onUpstreamTimeoutAbort(StreamInfo::CoreResponseFlag::UpstreamRequestTimeout,
                          response_code_details);
@@ -1232,6 +1238,9 @@ void Filter::onStreamMaxDurationReached(UpstreamRequest& upstream_request) {
     return;
   }
 
+  std::ostringstream oss;
+  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&upstream_request);
+  ENVOY_LOG(info, "PVALO Filer::removeFromList 1224, upstream_request: {}", oss.str());
   upstream_request.removeFromList(upstream_requests_);
   cleanup();
 
@@ -1349,6 +1358,9 @@ bool Filter::maybeRetryReset(Http::StreamResetReason reset_reason,
     }
 
     auto request_ptr = upstream_request.removeFromList(upstream_requests_);
+    std::ostringstream oss;
+    oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(request_ptr.get());
+    ENVOY_LOG(info, "PVALO Filer::removeFromList 1341, request_ptr: {}", oss.str());
     callbacks_->dispatcher().deferredDelete(std::move(request_ptr));
     return true;
   } else if (retry_status == RetryStatus::NoOverflow) {
@@ -1364,7 +1376,8 @@ bool Filter::maybeRetryReset(Http::StreamResetReason reset_reason,
 void Filter::onUpstreamReset(Http::StreamResetReason reset_reason,
                              absl::string_view transport_failure_reason,
                              UpstreamRequest& upstream_request) {
-  ENVOY_STREAM_LOG(debug, "upstream reset: reset reason: {}, transport failure reason: {}",
+  ENVOY_LOG(info, "PVALO Filter::onUpstreamReset({}, {})", Http::Utility::resetReasonToString(reset_reason), transport_failure_reason);
+  ENVOY_STREAM_LOG(info, "upstream reset: reset reason: {}, transport failure reason: {}",
                    *callbacks_, Http::Utility::resetReasonToString(reset_reason),
                    transport_failure_reason);
 
@@ -1394,6 +1407,9 @@ void Filter::onUpstreamReset(Http::StreamResetReason reset_reason,
                                     : Http::Code::ServiceUnavailable;
   chargeUpstreamAbort(error_code, dropped, upstream_request);
   auto request_ptr = upstream_request.removeFromList(upstream_requests_);
+  std::ostringstream oss;
+  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(request_ptr.get());
+  ENVOY_LOG(info, "PVALO Filer::removeFromList 1388, request_ptr: {}", oss.str());
   callbacks_->dispatcher().deferredDelete(std::move(request_ptr));
 
   // If there are other in-flight requests that might see an upstream response,
@@ -1512,6 +1528,9 @@ void Filter::onUpstream1xxHeaders(Http::ResponseHeaderMapPtr&& headers,
 void Filter::resetAll() {
   while (!upstream_requests_.empty()) {
     auto request_ptr = upstream_requests_.back()->removeFromList(upstream_requests_);
+    std::ostringstream oss;
+    oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(request_ptr.get());
+    ENVOY_LOG(info, "PVALO Filer::removeFromList 1507, request_ptr: {}", oss.str());
     request_ptr->resetStream();
     callbacks_->dispatcher().deferredDelete(std::move(request_ptr));
   }
@@ -1524,6 +1543,9 @@ void Filter::resetOtherUpstreams(UpstreamRequest& upstream_request) {
   while (!upstream_requests_.empty()) {
     UpstreamRequestPtr upstream_request_tmp =
         upstream_requests_.back()->removeFromList(upstream_requests_);
+    std::ostringstream oss;
+    oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(upstream_request_tmp.get());
+    ENVOY_LOG(info, "PVALO Filer::removeFromList 1519, upstream_request_tmp: {}", oss.str());
     if (upstream_request_tmp.get() != &upstream_request) {
       upstream_request_tmp->resetStream();
       // TODO: per-host stat for hedge abandoned.
@@ -1532,6 +1554,10 @@ void Filter::resetOtherUpstreams(UpstreamRequest& upstream_request) {
       final_upstream_request = std::move(upstream_request_tmp);
     }
   }
+
+  std::ostringstream oss;
+  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(final_upstream_request.get());
+  ENVOY_LOG(info, "PVALO putting back into upstreams, final_upstream_request: {}", oss.str());
 
   ASSERT(final_upstream_request);
   // Now put the final request back on this list.
@@ -1600,6 +1626,9 @@ void Filter::onUpstreamHeaders(uint64_t response_code, Http::ResponseHeaderMapPt
           upstream_request.resetStream();
         }
         auto request_ptr = upstream_request.removeFromList(upstream_requests_);
+        std::ostringstream oss;
+        oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(request_ptr.get());
+        ENVOY_LOG(info, "PVALO Filer::removeFromList 1597, request_ptr: {}", oss.str());
         callbacks_->dispatcher().deferredDelete(std::move(request_ptr));
         return;
       } else if (retry_status == RetryStatus::NoOverflow) {
@@ -1631,6 +1660,9 @@ void Filter::onUpstreamHeaders(uint64_t response_code, Http::ResponseHeaderMapPt
     // Reset the stream because there are other in-flight requests that we'll
     // wait around for and we're not interested in consuming any body/trailers.
     auto request_ptr = upstream_request.removeFromList(upstream_requests_);
+    std::ostringstream oss;
+    oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(request_ptr.get());
+    ENVOY_LOG(info, "PVALO Filer::removeFromList 1629, request_ptr: {}", oss.str());
     request_ptr->resetStream();
     callbacks_->dispatcher().deferredDelete(std::move(request_ptr));
     return;
@@ -1788,6 +1820,9 @@ void Filter::onUpstreamComplete(UpstreamRequest& upstream_request) {
 
   // Defer deletion as this is generally called under the stack of the upstream
   // request, and immediate deletion is dangerous.
+  std::ostringstream oss;
+  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&upstream_request);
+  ENVOY_LOG(info, "PVALO Filer::removeFromList 1788, upstream_request: {}", oss.str());
   callbacks_->dispatcher().deferredDelete(upstream_request.removeFromList(upstream_requests_));
   cleanup();
 }

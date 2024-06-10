@@ -160,6 +160,9 @@ void ConnPoolImpl::closeConnections() {
 }
 ConnectionPool::Cancellable*
 ConnPoolImpl::newConnection(Tcp::ConnectionPool::Callbacks& callbacks) {
+  std::ostringstream os;
+  os << "0x" << std::hex << reinterpret_cast<uintptr_t>(&callbacks);
+  ENVOY_LOG(info, "PVALO ConnPoolImpl::newConnection, callbacks: {}", os.str());
   TcpAttachContext context(&callbacks);
   // TLS early data over TCP is not supported yet.
   return newStreamImpl(context, /*can_send_early_data=*/false);
@@ -183,6 +186,11 @@ void ConnPoolImpl::onPoolReady(Envoy::ConnectionPool::ActiveClient& client,
   ActiveTcpClient* tcp_client = static_cast<ActiveTcpClient*>(&client);
   tcp_client->readEnableIfNew();
   auto* callbacks = typedContext<TcpAttachContext>(context).callbacks_;
+  std::ostringstream oss;
+  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(this);
+  std::ostringstream os;
+  os << "0x" << std::hex << reinterpret_cast<uintptr_t>(callbacks);
+  ENVOY_LOG(info, "PVALO ConnPoolImpl::onPoolReady {}, callbacks: {}", oss.str(), os.str());
   std::unique_ptr<Envoy::Tcp::ConnectionPool::ConnectionData> connection_data =
       std::make_unique<ActiveTcpClient::TcpConnectionData>(*tcp_client, *tcp_client->connection_);
   callbacks->onPoolReady(std::move(connection_data), tcp_client->real_host_description_);

@@ -247,6 +247,7 @@ void TcpConnPool::newStream(GenericConnectionPoolCallbacks& callbacks) {
 void TcpConnPool::onPoolFailure(ConnectionPool::PoolFailureReason reason,
                                 absl::string_view failure_reason,
                                 Upstream::HostDescriptionConstSharedPtr host) {
+  ENVOY_LOG(info, "PVALO tcp_proxy TcpConnPool::onPoolFailure({}, {})", int(reason), failure_reason);
   upstream_handle_ = nullptr;
   callbacks_->onGenericPoolFailure(reason, failure_reason, host);
 }

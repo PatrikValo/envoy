@@ -161,7 +161,7 @@ private:
 
 // PendingStream is the base class tracking streams for which a connection has been created but not
 // yet established.
-class PendingStream : public LinkedObject<PendingStream>, public ConnectionPool::Cancellable {
+class PendingStream : public LinkedObject<PendingStream>, public ConnectionPool::Cancellable, public Logger::Loggable<Logger::Id::router> {
 public:
   PendingStream(ConnPoolImplBase& parent, bool can_send_early_data);
   ~PendingStream() override;
@@ -197,6 +197,19 @@ public:
   // capacity as streams are created and destroyed. QUIC does custom stream
   // accounting so will override this to false.
   virtual bool trackStreamCapacity() { return true; }
+
+  void logPendingStreams(std::string const& prefix) {
+    std::string result;
+    for (auto const& stream : pending_streams_) {
+      std::ostringstream oss;
+      oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(stream.get());
+      result += oss.str() + ", ";
+    }
+
+    std::ostringstream oss;
+    oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(this);
+    ENVOY_LOG(info, "PVALO {} ConnPoolImplBase: {}, pending_streams_: {}", prefix, oss.str(), result);
+  }
 
   // A helper function to get the specific context type from the base class context.
   template <class T> T& typedContext(AttachContext& context) {
@@ -347,6 +360,9 @@ protected:
 
   ConnectionPool::Cancellable*
   addPendingStream(Envoy::ConnectionPool::PendingStreamPtr&& pending_stream) {
+    std::ostringstream oss;
+    oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(pending_stream.get());
+    ENVOY_LOG(info, "PVALO addPendingStream: {}", oss.str());
     LinkedList::moveIntoList(std::move(pending_stream), pending_streams_);
     state_.incrPendingStreams(1);
     return pending_streams_.front().get();

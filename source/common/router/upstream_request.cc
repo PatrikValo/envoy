@@ -163,7 +163,12 @@ UpstreamRequest::UpstreamRequest(RouterFilterInterface& parent,
   ASSERT(created && upstream_interface_.has_value());
 }
 
-UpstreamRequest::~UpstreamRequest() { cleanUp(); }
+UpstreamRequest::~UpstreamRequest() {
+  std::ostringstream oss;
+  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(this);
+  ENVOY_LOG(info, "PVALO ~UpstreamRequest: {}", oss.str());
+  cleanUp();
+}
 
 void UpstreamRequest::cleanUp() {
   if (cleaned_up_) {
@@ -455,6 +460,9 @@ void UpstreamRequest::acceptMetadataFromRouter(Http::MetadataMapPtr&& metadata_m
 
 void UpstreamRequest::onResetStream(Http::StreamResetReason reason,
                                     absl::string_view transport_failure_reason) {
+  std::ostringstream oss;
+  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(this);
+  ENVOY_LOG(info, "PVALO UpstreamRequest({})::onResetStream({}, {}, {})", oss.str(), Http::Utility::resetReasonToString(reason), transport_failure_reason, bool(calling_encode_headers_));
   ScopeTrackerScopeState scope(&parent_.callbacks()->scope(), parent_.callbacks()->dispatcher());
 
   if (span_ != nullptr) {
@@ -466,6 +474,7 @@ void UpstreamRequest::onResetStream(Http::StreamResetReason reason,
   awaiting_headers_ = false;
   if (!calling_encode_headers_) {
     stream_info_.setResponseFlag(Filter::streamResetReasonToResponseFlag(reason));
+    ENVOY_LOG(info, "PVALO calling parent_.onUpstreamReset");
     parent_.onUpstreamReset(reason, transport_failure_reason, *this);
   } else {
     deferred_reset_reason_ = reason;
@@ -473,6 +482,9 @@ void UpstreamRequest::onResetStream(Http::StreamResetReason reason,
 }
 
 void UpstreamRequest::resetStream() {
+  std::ostringstream oss;
+  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(this);
+  ENVOY_LOG(info, "PVALO UpstreamRequest::resetStream: {}", oss.str());
   if (conn_pool_->cancelAnyPendingStream()) {
     ENVOY_STREAM_LOG(debug, "canceled pool request", *parent_.callbacks());
     ASSERT(!upstream_);
@@ -563,6 +575,9 @@ void UpstreamRequest::recordConnectionPoolCallbackLatency() {
 void UpstreamRequest::onPoolFailure(ConnectionPool::PoolFailureReason reason,
                                     absl::string_view transport_failure_reason,
                                     Upstream::HostDescriptionConstSharedPtr host) {
+  std::ostringstream oss;
+  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(this);
+  ENVOY_LOG(info, "PVALO UpstreamRequest({})::onPoolFailure({}, {}, {})", oss.str(), int(reason), transport_failure_reason, host->hostname());
   recordConnectionPoolCallbackLatency();
   Http::StreamResetReason reset_reason = [](ConnectionPool::PoolFailureReason reason) {
     switch (reason) {
@@ -590,9 +605,12 @@ void UpstreamRequest::onPoolReady(std::unique_ptr<GenericUpstream>&& upstream,
                                   const Network::ConnectionInfoProvider& address_provider,
                                   StreamInfo::StreamInfo& info,
                                   absl::optional<Http::Protocol> protocol) {
+  std::ostringstream oss;
+  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(this);
+  ENVOY_LOG(info, "PVALO UpstreamRequest({})::onPoolReady", oss.str());
   // This may be called under an existing ScopeTrackerScopeState but it will unwind correctly.
   ScopeTrackerScopeState scope(&parent_.callbacks()->scope(), parent_.callbacks()->dispatcher());
-  ENVOY_STREAM_LOG(debug, "pool ready", *parent_.callbacks());
+  ENVOY_STREAM_LOG(info, "pool ready", *parent_.callbacks());
   recordConnectionPoolCallbackLatency();
   upstream_ = std::move(upstream);
   had_upstream_ = true;
