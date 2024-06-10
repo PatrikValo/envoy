@@ -1,0 +1,52 @@
+name: Linux Docker Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install Docker
+      uses: docker-practice/actions-setup-docker@master
+      timeout-minutes: 12
+
+    - name: Free Up Space
+      run: |
+        df -h
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf "/usr/local/share/boost"
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        df -h
+
+    - name: Cache Bazel
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/envoy-build/.cache
+          ~/envoy-cache
+        key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE', 'WORKSPACE.bazel', 'MODULE.bazel') }}
+        restore-keys: |
+          ${{ runner.os }}-bazel-
+
+    - name: Run Envoy Docker Build
+      run: |
+        export ENVOY_DOCKER_BUILD_DIR="$HOME/envoy-build"
+        export BAZEL_BUILD_OPTIONS="--disk_cache=~/envoy-cache"
+        ./ci/run_envoy_docker.sh './ci/do_ci.sh release.server_only'
+
+    - name: Create a zip file
+      run: |
+        zip -r $HOME/out-x64.zip $HOME/envoy-build/envoy/x64/bin
+      continue-on-error: true
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-output
+        path: ~/out-x64.zip
+      continue-on-error: true
