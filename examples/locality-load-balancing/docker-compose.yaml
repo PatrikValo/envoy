@@ -5,6 +5,7 @@ services:
       context: .
       dockerfile: ../shared/envoy/Dockerfile
       target: envoy-load-balancing
+    platform: linux/amd64
     depends_on:
       backend-local-1:
         condition: service_healthy

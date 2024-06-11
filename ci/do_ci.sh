@@ -2,7 +2,7 @@
 
 # Run a CI build/test target, e.g. docs, asan.
 
-set -e
+set -ex
 
 # TODO(phlax): Clarify and/or integrate SRCDIR and ENVOY_SRCDIR
 export SRCDIR="${SRCDIR:-$PWD}"
@@ -296,7 +296,7 @@ case $CI_TARGET in
         if [[ -n "$ENVOY_API_ONLY" ]]; then
             exit 0
         fi
-        ;&
+        ;;
 
     api.go)
         if [[ -z "$CLANG_TOOLCHAIN_SETUP" ]]; then
@@ -626,6 +626,7 @@ case $CI_TARGET in
             path="$(echo "${platform_name}" | cut -d: -f1)"
             platform="$(echo "${platform_name}" | cut -d: -f2)"
             bin_folder="${ENVOY_TARBALL_DIR}/${path}/bin"
+            echo $bin_folder
             if [[ ! -e "${bin_folder}/release.tar.zst" ]]; then
                 continue
             fi

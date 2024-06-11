@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: ../shared/envoy/Dockerfile
       target: envoy-fault-injection
+    platform: linux/amd64
     volumes:
     - ./runtime:/srv/runtime
     ports:
