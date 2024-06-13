@@ -870,6 +870,7 @@ case $CI_TARGET in
         bazel build "${BAZEL_BUILD_OPTIONS[@]}" \
               "${BAZEL_RELEASE_OPTIONS[@]}" \
               --remote_download_outputs=toplevel \
+              --config=asan \
               //distribution/binary:release
         # Copy release binaries to binary export directory
         cp -a \
