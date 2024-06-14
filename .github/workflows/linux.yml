@@ -27,24 +27,12 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          ~/envoy-build/.cache
+          /home/runner/envoy-build/.cache
         key: pvalo-cache
         restore-keys: |
           pvalo-cache
 
     - name: Run Envoy Docker Build
       run: |
-        export ENVOY_DOCKER_BUILD_DIR="~/envoy-build"
+        export ENVOY_DOCKER_BUILD_DIR="/home/runner/envoy-build"
         ./ci/run_envoy_docker.sh 'bazel test --test_output=streamed //test/integration:tcp_tunneling_integration_test --test_arg="-l trace"'
-
-    - name: Create a zip file
-      run: |
-        zip -r $HOME/out-x64.zip $HOME/envoy-build/envoy/x64/bin
-      continue-on-error: true
-
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: build-output
-        path: ~/out-x64.zip
-      continue-on-error: true
