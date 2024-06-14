@@ -262,7 +262,8 @@ private:
 
 class UpstreamRequestFilterManagerCallbacks : public Http::FilterManagerCallbacks,
                                               public Event::DeferredDeletable,
-                                              public Http::UpstreamStreamFilterCallbacks {
+                                              public Http::UpstreamStreamFilterCallbacks,
+                                              public Logger::Loggable<Logger::Id::pool> {
 public:
   UpstreamRequestFilterManagerCallbacks(UpstreamRequest& upstream_request)
       : upstream_request_(upstream_request) {}

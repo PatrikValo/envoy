@@ -28,16 +28,14 @@ jobs:
       with:
         path: |
           ~/envoy-build/.cache
-          ~/envoy-cache
-        key: ${{ runner.os }}-bazel-${{ hashFiles('.bazelversion', '.bazelrc', 'WORKSPACE', 'WORKSPACE.bazel', 'MODULE.bazel') }}
+        key: pvalo-cache
         restore-keys: |
-          ${{ runner.os }}-bazel-
+          pvalo-cache
 
     - name: Run Envoy Docker Build
       run: |
-        export ENVOY_DOCKER_BUILD_DIR="$HOME/envoy-build"
-        export BAZEL_BUILD_OPTIONS="--disk_cache=~/envoy-cache"
-        ./ci/run_envoy_docker.sh './ci/do_ci.sh asan'
+        export ENVOY_DOCKER_BUILD_DIR="~/envoy-build"
+        ./ci/run_envoy_docker.sh 'bazel test --test_output=streamed //test/integration:tcp_tunneling_integration_test --test_arg="-l trace"'
 
     - name: Create a zip file
       run: |

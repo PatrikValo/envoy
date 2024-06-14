@@ -827,6 +827,7 @@ Tracing::Span& UpstreamRequestFilterManagerCallbacks::activeSpan() {
 
 void UpstreamRequestFilterManagerCallbacks::resetStream(
     Http::StreamResetReason reset_reason, absl::string_view transport_failure_reason) {
+  ENVOY_LOG(info, "PVALO UpstreamRequestFilterManagerCallbacks::resetStream");
   // The filter manager needs to disambiguate between a filter-driven reset,
   // which should force reset the stream, and a codec driven reset, which should
   // tell the router the stream reset, and let the router make the decision to
