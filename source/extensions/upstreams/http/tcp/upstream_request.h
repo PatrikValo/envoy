@@ -99,7 +99,8 @@ private:
 };
 
 class TcpUpstream : public Router::GenericUpstream,
-                    public Envoy::Tcp::ConnectionPool::UpstreamCallbacks {
+                    public Envoy::Tcp::ConnectionPool::UpstreamCallbacks,
+                    protected Logger::Loggable<Logger::Id::pool> {
 public:
   TcpUpstream(Router::UpstreamToDownstream* upstream_request,
               Envoy::Tcp::ConnectionPool::ConnectionDataPtr&& upstream);

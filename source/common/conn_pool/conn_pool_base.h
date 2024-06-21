@@ -123,7 +123,9 @@ public:
 
   virtual bool hasHandshakeCompleted() const {
     ASSERT(!supportsEarlyData());
-    return state_ != State::Connecting;
+    bool value = state_ != State::Connecting;
+    ENVOY_LOG(info, "PVALO ActiveClient::hasHandshakeCompleted({})", value);
+    return value;
   }
 
   ConnPoolImplBase& parent_;

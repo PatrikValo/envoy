@@ -484,6 +484,7 @@ void ConnPoolImplBase::checkForIdleAndCloseIdleConnsIfDraining() {
 
 void ConnPoolImplBase::onConnectionEvent(ActiveClient& client, absl::string_view failure_reason,
                                          Network::ConnectionEvent event) {
+  ENVOY_LOG(info, "PVALO ConnPoolImplBase::onConnectionEvent({}, {})", failure_reason, int(event));
   switch (event) {
   case Network::ConnectionEvent::RemoteClose:
   case Network::ConnectionEvent::LocalClose: {

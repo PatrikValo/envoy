@@ -86,6 +86,7 @@ void ActiveTcpClient::onEvent(Network::ConnectionEvent event) {
   // for TCP for protocols like MySQL where the upstream writes first, and the data needs to be
   // preserved until a downstream connection is associated.
   // This is also necessary for prefetch to be used with such protocols.
+  ENVOY_LOG(info, "PVALO ActiveTcpClient::onEvent({})", int(event));
   if (event == Network::ConnectionEvent::Connected) {
     connection_->readDisable(true);
   }

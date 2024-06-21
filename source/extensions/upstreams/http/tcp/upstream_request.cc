@@ -99,6 +99,7 @@ void TcpUpstream::onUpstreamData(Buffer::Instance& data, bool end_stream) {
 }
 
 void TcpUpstream::onEvent(Network::ConnectionEvent event) {
+  ENVOY_LOG(info, "PVALO TcpUpstream::onEvent({})", int(event));
   if ((event == Network::ConnectionEvent::LocalClose ||
        event == Network::ConnectionEvent::RemoteClose) &&
       upstream_request_) {
