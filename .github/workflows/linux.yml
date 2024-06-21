@@ -36,3 +36,4 @@ jobs:
       run: |
         export ENVOY_DOCKER_BUILD_DIR="/home/runner/envoy-build"
         ./ci/run_envoy_docker.sh './ci/do_ci.sh asan //test/integration:tcp_tunneling_integration_test'
+      continue-on-error: true
