@@ -352,6 +352,8 @@ case $CI_TARGET in
             -c dbg
             "--config=clang-asan"
             "--build_tests_only"
+            "--test_output=streamed"
+            '--test_arg="-l trace"'
             "--remote_download_minimal")
         echo "bazel ASAN/UBSAN debug build with tests"
         echo "Building and testing envoy tests ${TEST_TARGETS[*]}"
