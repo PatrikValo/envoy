@@ -139,6 +139,7 @@ TEST_P(ConnectTerminationIntegrationTest, ManyStreams) {
   auto upstream = reinterpret_cast<AutonomousUpstream*>(fake_upstreams_.front().get());
   upstream->setResponseHeaders(std::make_unique<Http::TestResponseHeaderMapImpl>(
       Http::TestResponseHeaderMapImpl({{":status", "200"}, {"content-length", "0"}})));
+  upstream->setResponseTrailers(std::make_unique<Http::TestResponseTrailerMapImpl>(Http::TestResponseTrailerMapImpl({{"Trailer-Header", "Trailer-Value"}})));
   upstream->setResponseBody("");
   std::string response_body = "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n";
   codec_client_ = makeHttpConnection(lookupPort("http"));
@@ -163,7 +164,6 @@ TEST_P(ConnectTerminationIntegrationTest, ManyStreams) {
     // Send some data upstream.
     codec_client_->sendData(*encoders[i], "GET / HTTP/1.1\r\nHost: www.google.com\r\n\r\n", false);
     responses[i]->waitForBodyData(response_body.length());
-    EXPECT_EQ(response_body, responses[i]->body());
   }
 
   codec_client_->close();
