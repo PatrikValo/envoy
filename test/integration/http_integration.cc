@@ -157,8 +157,11 @@ void IntegrationCodecClient::sendTrailers(Http::RequestEncoder& encoder,
 }
 
 void IntegrationCodecClient::sendReset(Http::RequestEncoder& encoder) {
+  ENVOY_LOG(info, "PVALO IntegrationCodecClient::sendReset start");
   encoder.getStream().resetStream(Http::StreamResetReason::LocalReset);
+  ENVOY_LOG(info, "PVALO IntegrationCodecClient::sendReset flush");
   flushWrite();
+  ENVOY_LOG(info, "PVALO IntegrationCodecClient::sendReset end");
 }
 
 void IntegrationCodecClient::sendMetadata(Http::RequestEncoder& encoder,
@@ -173,11 +176,17 @@ void IntegrationCodecClient::sendMetadata(Http::RequestEncoder& encoder,
 std::pair<Http::RequestEncoder&, IntegrationStreamDecoderPtr>
 IntegrationCodecClient::startRequest(const Http::RequestHeaderMap& headers,
                                      bool header_only_request) {
+  ENVOY_LOG(info, "PVALO IntegrationCodecClient::startRequest start");
   auto response = std::make_unique<IntegrationStreamDecoder>(dispatcher_);
+  ENVOY_LOG(info, "PVALO IntegrationCodecClient::startRequest newStream");
   Http::RequestEncoder& encoder = newStream(*response);
+  ENVOY_LOG(info, "PVALO IntegrationCodecClient::startRequest callbacks");
   encoder.getStream().addCallbacks(*response);
+  ENVOY_LOG(info, "PVALO IntegrationCodecClient::startRequest encodeHeaders");
   encoder.encodeHeaders(headers, /*end_stream=*/header_only_request).IgnoreError();
+  ENVOY_LOG(info, "PVALO IntegrationCodecClient::startRequest flush");
   flushWrite();
+  ENVOY_LOG(info, "PVALO IntegrationCodecClient::startRequest end");
   return {encoder, std::move(response)};
 }
 
