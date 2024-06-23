@@ -1756,6 +1756,9 @@ void Filter::onUpstreamTrailers(Http::ResponseTrailerMapPtr&& trailers,
     }
   }
 
+  std::ostringstream oss;
+  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&upstream_request);
+  ENVOY_LOG(info, "PVALO Filter::onUpstreamTrailers({})", oss.str());
   onUpstreamComplete(upstream_request);
 
   callbacks_->encodeTrailers(std::move(trailers));
@@ -1766,6 +1769,9 @@ void Filter::onUpstreamMetadata(Http::MetadataMapPtr&& metadata_map) {
 }
 
 void Filter::onUpstreamComplete(UpstreamRequest& upstream_request) {
+  std::ostringstream oss;
+  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&upstream_request);
+  ENVOY_LOG(info, "PVALO Filter::onUpstreamComplete({})", oss.str());
   if (!downstream_end_stream_) {
     upstream_request.resetStream();
   }
@@ -1820,9 +1826,9 @@ void Filter::onUpstreamComplete(UpstreamRequest& upstream_request) {
 
   // Defer deletion as this is generally called under the stack of the upstream
   // request, and immediate deletion is dangerous.
-  std::ostringstream oss;
-  oss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&upstream_request);
-  ENVOY_LOG(info, "PVALO Filer::removeFromList 1788, upstream_request: {}", oss.str());
+  std::ostringstream oss1;
+  oss1 << "0x" << std::hex << reinterpret_cast<uintptr_t>(&upstream_request);
+  ENVOY_LOG(info, "PVALO Filer::removeFromList 1788, upstream_request: {}", oss1.str());
   callbacks_->dispatcher().deferredDelete(upstream_request.removeFromList(upstream_requests_));
   cleanup();
 }
